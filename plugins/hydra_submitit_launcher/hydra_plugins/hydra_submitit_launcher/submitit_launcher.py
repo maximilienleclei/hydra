@@ -97,6 +97,9 @@ class BaseSubmititLauncher(Launcher):
         init_params = {"folder": self.params["submitit_folder"]}
         specific_init_keys = {"max_num_timeout"}
 
+        if self._EXECUTOR == "slurm":
+            specific_init_keys = specific_init_keys | {"python"}
+        
         init_params.update(
             **{
                 f"{self._EXECUTOR}_{x}": y
@@ -140,9 +143,16 @@ class BaseSubmititLauncher(Launcher):
                     Singleton.get_state(),
                 )
             )
-
-        jobs = executor.map_array(self, *zip(*job_params))
-        return [j.results()[0] for j in jobs]
+        
+        if self._EXECUTOR == "local":
+            results = []
+            for i, job_param in enumerate(job_params):
+                job = executor.map_array(self, *zip(*[job_params[i]]))
+                results.append(job[0].results()[0])
+            return results
+        else: # self._EXECUTOR == "false":
+            jobs = executor.map_array(self, *zip(*job_params))
+            return [j.results()[0] for j in jobs]
 
 
 class LocalLauncher(BaseSubmititLauncher):
